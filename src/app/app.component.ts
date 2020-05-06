@@ -1,6 +1,5 @@
 import { Component, AfterViewInit, OnInit } from '@angular/core';
 import * as d3 from 'd3';
-import * as topojson from 'topojson';
 
 @Component({
   selector: 'app-root',
@@ -8,99 +7,87 @@ import * as topojson from 'topojson';
   styleUrls: ['./app.component.css'],
 })
 export class AppComponent implements AfterViewInit, OnInit {
-  eduResp: any = [];
-  educations: any = [];
-  countiesResp: any = [];
-  counties: any = [];
-  data: any = {};
   constructor() {}
 
   async ngOnInit() {
-    this.eduResp = await fetch(
-      'https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/for_user_education.json'
-    );
-    this.educations = await this.eduResp.json();
-    this.countiesResp = await fetch(
-      'https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/counties.json'
-    );
-    this.counties = await this.countiesResp.json();
-    this.data = await topojson.feature(
-      this.counties,
-      this.counties.objects.counties
-    );
-    debugger;
+    //this data is not valid find some valid data set before
+    const data = [
+      { date: new Date('December 17, 1995 03:24:00'), distance: 200 },
+      { date: new Date('January 18, 1996 03:24:00'), distance: 400 },
+      { date: new Date('February 30, 1997 03:24:00'), distance: 500 },
+      { date: new Date('March 20, 1998 03:24:00'), distance: 100 },
+    ];
 
-    const path = d3.geoPath();
+    // const data = [
+    //   { date: new Date(1995), distance: 200 },
+    //   { date: new Date(1996), distance: 400 },
+    //   { date: new Date(1997), distance: 500 },
+    //   { date: new Date(1998), distance: 100 },
+    //   { date: new Date(1995), distance: 700 },
+    // ];
+
+    // data.sort((a, b) => new Date(a.date) - new Date(b.date));
+    const margin = { top: 40, right: 20, bottom: 50, left: 100 };
+    const graphWidth = 560 - margin.left - margin.right;
+    const graphHeight = 400 - margin.top - margin.bottom;
+
     const svg = d3
       .select('.canvas')
       .append('svg')
-      .attr('width', 1200)
-      .attr('height', 600);
-    // create margins and dimensions
-    const margin = { top: 20, right: 20, bottom: 100, left: 100 };
-    const graphWidth = 600 - margin.left - margin.right;
-    const graphHeight = 600 - margin.top - margin.bottom;
+      .attr('width', graphWidth + margin.left + margin.right)
+      .attr('height', graphHeight + margin.top + margin.bottom);
 
-    // Define the div for the tooltip
-    // var body = d3.select('body');
-    // var tooltip = body
-    //   .append('div')
-    //   .attr('class', 'tooltip')
-    //   .attr('id', 'tooltip')
-    //   .style('opacity', 0);
-    const tooltip = document.getElementById('tooltip');
-    svg
+    const graph = svg
       .append('g')
-      .selectAll('path')
-      .attr('class', 'county')
-      .data(this.data.features)
-      .enter()
-      .append('path')
-      .attr('fill', 'black')
-      .attr('d', path)
-      .on('mouseover', (d, i) => {
-        const { coordinates } = d.geometry;
-        const [x, y] = coordinates[0][0];
+      .attr('width', graphWidth)
+      .attr('height', graphHeight)
+      .attr('transform', `translate(${margin.left}, ${margin.top})`);
 
-        // matching and then mapping equal fips of baclor data with the svg graph
-        const education = this.educations.find((edu) => edu.fips === d.id);
+    // scales
+    const x = d3.scaleTime().range([0, graphWidth]);
+    const y = d3.scaleLinear().range([graphHeight, 0]);
 
-        tooltip.classList.add('show');
-        debugger;
-        tooltip.style.left = x - 50 + 'px';
-        tooltip.style.top = y - 50 + 'px';
-        tooltip.setAttribute('data-education', education.bachelorsOrHigher);
+    // setting up domain and range of scales
+    x.domain(d3.extent(data, (d) => new Date(d.date)));
+    y.domain([0, d3.max(data, (d) => d.distance)]);
 
-        tooltip.innerHTML = `
-          <p>${education.area_name} - ${education.state}</p>
-          <p>${education.bachelorsOrHigher}</p>
-        `;
+    //axes group
+    const xAxisGroup = graph
+      .append('g')
+      .attr('class', 'x-axis')
+      .attr('transform', `translate(0, ${graphHeight})`);
+
+    const yAxisGroup = graph.append('g').attr('class', 'y-axis');
+
+    // d3 line path generator
+    const line = d3
+      .line()
+      .x(function (d) {
+        return x(new Date(d.data));
       })
-      .on('mouseout', () => {
-        tooltip.classList.remove('show');
+      .y(function (d) {
+        return y(d.distance);
       });
-    debugger;
+
+    // line path element
+    const path = graph.append('path');
+
+    //update path data
+    path
+      .data([data])
+      .attr('fill', 'none')
+      .attr('stroke', 'black')
+      .attr('stroke-width', 2)
+      .attr('d', line);
+
+    // create axes
+    const xAxis = d3.axisBottom(x).ticks(5);
+    const yAxis = d3.axisLeft(y).ticks(6);
+
+    // call axes
+    xAxisGroup.call(xAxis);
+    yAxisGroup.call(yAxis);
   }
 
-  ngAfterViewInit() {
-    // const path = d3.geoPath();
-    // const svg = d3
-    //   .select('.canvas')
-    //   .append('svg')
-    //   .attr('width', 600)
-    //   .attr('height', 600);
-    // // create margins and dimensions
-    // const margin = { top: 20, right: 20, bottom: 100, left: 100 };
-    // const graphWidth = 600 - margin.left - margin.right;
-    // const graphHeight = 600 - margin.top - margin.bottom;
-    // svg
-    //   .append('g')
-    //   .selectAll('path')
-    //   .data(this.data.features.slice(0, 10))
-    //   .enter()
-    //   .append('path')
-    //   .attr('fill', 'black')
-    //   .attr('d', path);
-    // debugger;
-  }
+  ngAfterViewInit() {}
 }
